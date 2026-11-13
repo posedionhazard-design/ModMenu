@@ -13,13 +13,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract IOS.zip and Cleanup
+      - name: Extract İOS.zip and Cleanup
         run: |
-          if [ -f "IOS.zip" ]; then
-            echo "IOS.zip bulundu, dosyalar çıkarılıyor..."
-            unzip -q IOS.zip -d .
-            echo "IOS.zip siliniyor..."
-            rm IOS.zip
+          if [ -f "İOS.zip" ]; then
+            echo "İOS.zip bulundu, dosyalar çıkarılıyor..."
+            unzip -q İOS.zip -d .
+            echo "İOS.zip siliniyor..."
+            rm İOS.zip
             ls -la
           else
             echo "İOS.zip bulunamadı!"
@@ -38,6 +38,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "Değişiklik yok."
           else
-            git commit -m "chore: Unzip IOS.zip and cleanup archive"
+            git commit -m "chore: Unzip İOS.zip and cleanup archive"
             git push
           fi
