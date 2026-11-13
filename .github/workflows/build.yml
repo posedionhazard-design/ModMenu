@@ -15,6 +15,10 @@ jobs:
 
       - name: Install Theos and SDKs
         run: |
+          # Daha önceden kalmış olabilecek eski Theos dosyalarını temizle
+          sudo rm -rf /opt/theos
+          
+          # Theos ve SDK'ları sıfırdan klonla
           sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
           sudo git clone https://github.com/theos/sdks.git /opt/theos/sdks
 
