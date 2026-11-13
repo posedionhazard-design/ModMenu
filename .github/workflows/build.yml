@@ -13,6 +13,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Install Dependencies (ldid)
+        run: |
+          brew install ldid
+
       - name: Setup Theos Environment
         run: |
           sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
@@ -21,31 +25,29 @@ jobs:
 
       - name: Build Package with Max Parallel Power
         run: |
-          # 1000+ SDK dosyasını işlemcinin tüm çekirdeklerini kullanarak hızlıca derler
           make package -j$(sysctl -n hw.ncpu)
 
-      - name: Prepare Separate Output Artifacts
+      - name: Separate and Organize Output Files
         run: |
-          mkdir -p output_files
+          # Ana çıktı klasörünü oluştur
+          mkdir -p final_outputs
           
-          # .deb dosyasını kopyala
-          cp packages/*.deb output_files/ 2>/dev/null || echo ".deb bulunamadı"
+          # 1. .deb dosyasını kopyala
+          cp packages/*.deb final_outputs/ 2>/dev/null || echo ".deb bulunamadı"
           
-          # .dylib dosyasını bul ve kopyala
+          # 2. .dylib dosyasını bul ve ayrı olarak kopyala
           DYLIB_FILE=$(find .theos/obj -name "*.dylib" | head -n 1)
           if [ -n "$DYLIB_FILE" ]; then
-            cp "$DYLIB_FILE" output_files/
-            echo "Dylib başarıyla kopyalandı."
+            cp "$DYLIB_FILE" final_outputs/
+            echo ".dylib başarıyla kopyalandı."
           else
             echo "Uyarı: .dylib dosyası bulunamadı."
           fi
 
       - name: Generate Compatible Test IPA & Inject Dylib
         run: |
-          # Test IPA için uygulama yapısını oluştur
           mkdir -p Payload/ModMenuTest.app
           
-          # Info.plist oluştur
           cat << 'EOF' > Payload/ModMenuTest.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -67,31 +69,34 @@ jobs:
           </dict>
           EOF
 
-          # .dylib dosyasını al ve uygulama içine taşı
-          DYLIB_NAME=$(basename output_files/*.dylib)
-          if [ -f "output_files/$DYLIB_NAME" ]; then
-            cp "output_files/$DYLIB_NAME" Payload/ModMenuTest.app/
+          DYLIB_NAME=$(basename final_outputs/*.dylib)
+          if [ -f "final_outputs/$DYLIB_NAME" ]; then
+            # .dylib dosyasını IPA içine de ekle ki uygulama çalıştırabilsin
+            cp "final_outputs/$DYLIB_NAME" Payload/ModMenuTest.app/
             
-            # Ana binary dosyasını derle
             echo 'int main(int argc, char *argv[]){return 0;}' > main.c
             xcrun clang main.c -o Payload/ModMenuTest.app/ModMenuTest
             
-            # Dylib yolunu @executable_path ile eşleştir (Sorunsuz yüklenmesi için kritik adım)
             install_name_tool -change "$DYLIB_NAME" "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/ModMenuTest || true
-            
-            # Alternatif ID düzeltmesi
             install_name_tool -id "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/$DYLIB_NAME || true
           fi
 
-          # IPA olarak arşivle
+          # IPA dosyasını oluştur ve final klasörüne taşı
           cd Payload
-          zip -r ../ModMenu_Test_Perfect.ipa *
+          zip -r ../ModMenu_Test.ipa *
           cd ..
-          mv ModMenu_Test_Perfect.ipa output_files/
+          mv ModMenu_Test.ipa final_outputs/
           rm -rf Payload main.c
 
-      - name: Upload All Outputs (Deb, Dylib, IPA)
+      - name: Create Final Clean Zip Archive
+        run: |
+          # Her şeyi tek bir düzenli zip içinde topluyoruz
+          cd final_outputs
+          zip -r ../ModMenu_Release_Files.zip *
+          cd ..
+
+      - name: Upload Final Archive Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: iOS-ModMenu-Perfect-Outputs
-          path: output_files/*
+          name: ModMenu-Release-Bundle
+          path: ModMenu_Release_Files.zip
