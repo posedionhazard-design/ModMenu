@@ -1,4 +1,4 @@
-name: Unzip and Cleanup Repository
+name: Build iOS Mod Menu (.deb)
 
 on:
   push:
@@ -6,39 +6,32 @@ on:
   workflow_dispatch:
 
 jobs:
-  unzip-and-clean:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract baba.zip and Cleanup
+      - name: Install Theos and SDKs
         run: |
-          # baba.zip veya büyük/küçük harf duyarlılığı olmadan herhangi bir zip dosyasını bul
-          ZIP_FILE=$(find . -maxdepth 1 -iname "baba.zip" | head -n 1)
-          
-          if [ -n "$ZIP_FILE" ]; then
-            echo "Bulunan arşiv: $ZIP_FILE, dosyalar çıkarılıyor..."
-            unzip -q "$ZIP_FILE" -d .
-            echo "Arşiv siliniyor..."
-            rm "$ZIP_FILE"
-            ls -la
-          else
-            echo "Hata: Kök dizinde baba.zip dosyası bulunamadı!"
-            exit 1
-          fi
+          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
+          sudo git clone https://github.com/theos/sdks.git /opt/theos/sdks
 
-      - name: Commit changes to repository
+      - name: Setup Theos Environment
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
-          git add -A
-          
-          if git diff --staged --quiet; then
-            echo "Değişiklik yok."
-          else
-            git commit -m "chore: Unzip baba.zip and cleanup archive"
-            git push
-          fi
+          echo "THEOS=/opt/theos" >> $GITHUB_ENV
+          echo "/opt/theos/bin" >> $GITHUB_PATH
+
+      - name: Build Package with Make
+        run: |
+          make clean
+          make package
+
+      - name: Upload Artifacts (.deb & .dylib)
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-ModMenu-Output
+          path: |
+            packages/*.deb
+            .theos/obj/*.dylib
