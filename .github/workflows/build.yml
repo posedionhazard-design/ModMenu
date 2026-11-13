@@ -22,7 +22,7 @@ jobs:
             rm IOS.zip
             ls -la
           else
-            echo "IOS.zip bulunamadı!"
+            echo "İOS.zip bulunamadı!"
             exit 1
           fi
 
