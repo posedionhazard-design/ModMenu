@@ -65,41 +65,41 @@ jobs:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-              <key>CFBundleIdentifier</key>
-              <string>com.test.modmenuapp</string>
-              <key>CFBundleName</key>
-              <string>ModMenuTest</string>
-              <key>CFBundleDisplayName</key>
-              <string>ModMenu Test</string>
-              <key>CFBundleExecutable</key>
-              <string>ModMenuTest</string>
-              <key>CFBundleVersion</key>
-              <string>1.0</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>MinimumOSVersion</key>
-              <string>14.0</string>
-              <key>UIDeviceFamily</key>
-              <array>
-                  <integer>1</integer>
-                  <integer>2</integer>
-              </array>
-              <key>UIRequiredDeviceCapabilities</key>
-              <array>
-                  <string>arm64</string>
-              </array>
-              <key>CFBundleIcons</key>
+            <key>CFBundleIdentifier</key>
+            <string>com.test.modmenuapp</string>
+            <key>CFBundleName</key>
+            <string>ModMenuTest</string>
+            <key>CFBundleDisplayName</key>
+            <string>ModMenu Test</string>
+            <key>CFBundleExecutable</key>
+            <string>ModMenuTest</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>MinimumOSVersion</key>
+            <string>14.0</string>
+            <key>UIDeviceFamily</key>
+            <array>
+              <integer>1</integer>
+              <integer>2</integer>
+            </array>
+            <key>UIRequiredDeviceCapabilities</key>
+            <array>
+              <string>arm64</string>
+            </array>
+            <key>CFBundleIcons</key>
+            <dict>
+              <key>CFBundlePrimaryIcon</key>
               <dict>
-                  <key>CFBundlePrimaryIcon</key>
-                  <dict>
-                      <key>CFBundleIconFiles</key>
-                      <array>
-                          <string>AppIcon60x60</string>
-                      </array>
-                  </dict>
+                <key>CFBundleIconFiles</key>
+                <array>
+                  <string>AppIcon60x60</string>
+                </array>
               </dict>
+            </dict>
           </dict>
           </plist>
           EOF
@@ -108,44 +108,44 @@ jobs:
           if [ -f "final_outputs/$DYLIB_NAME" ]; then
             cp "final_outputs/$DYLIB_NAME" Payload/ModMenuTest.app/
             
-            # Uygulamanın anında çökmesini (crash) önleyen, dylib'i güvenle yükleyen C++ ana başlatıcı kodu
+            # Uygulamanın anında çökmesini önleyen, dylib'i güvenle yükleyen C++ ana başlatıcı kodu
             cat << 'EOF' > main.m
-            #import <UIKit/UIKit.h>
-            #import <dlfcn.h>
+          #import <UIKit/UIKit.h>
+          #import <dlfcn.h>
 
-            @interface AppDelegate : UIResponder <UIApplicationDelegate>
-            @property (strong, nonatomic) UIWindow *window;
-            @end
+          @interface AppDelegate : UIResponder <UIApplicationDelegate>
+          @property (strong, nonatomic) UIWindow *window;
+          @end
 
-            @implementation AppDelegate
-            - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-                self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-                self.window.backgroundColor = [UIColor blackColor];
-                
-                // Ekrana test menüsünün yüklendiğini belirten bir yazı koyuyoruz ki çökmediğini görebilesiniz
-                UILabel *label = [[UILabel alloc] initWithFrame:self.window.bounds];
-                label.text = @"Mod Menu Test Aktif!\n(Dylib Yüklendi)";
-                label.textColor = [UIColor whiteColor];
-                label.textAlignment = NSTextAlignmentCenter;
-                label.numberOfLines = 2;
-                label.font = [UIFont boldSystemFontOfSize:20];
-                [self.window addSubview:label];
-                
-                [self.window makeKeyAndVisible];
-                return YES;
-            }
-            end
+          @implementation AppDelegate
+          - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+              self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+              self.window.backgroundColor = [UIColor blackColor];
+              
+              // Ekrana test menüsünün yüklendiğini belirten bir yazı koyuyoruz ki çökmediğini görebilesiniz
+              UILabel *label = [[UILabel alloc] initWithFrame:self.window.bounds];
+              label.text = @"Mod Menu Test Aktif!\n(Dylib Yüklendi)";
+              label.textColor = [UIColor whiteColor];
+              label.textAlignment = NSTextAlignmentCenter;
+              label.numberOfLines = 2;
+              label.font = [UIFont boldSystemFontOfSize:20];
+              [self.window addSubview:label];
+              
+              [self.window makeKeyAndVisible];
+              return YES;
+          }
+          @end
 
-            int main(int argc, char *argv[]) {
-                // Dylib dosyasını uygulama ayağa kalkarken güvenli bir şekilde belleğe (handle) yükle
-                NSString *dylibPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"%DYLIB_PLACEHOLDER%"];
-                dlopen([dylibPath cStringUsingEncoding:NSUTF8StringEncoding], RTLD_NOW);
-                
-                @autoreleasepool {
-                    return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-                }
-            }
-            EOF
+          int main(int argc, char *argv[]) {
+              // Dylib dosyasını uygulama ayağa kalkarken güvenli bir şekilde belleğe (handle) yükle
+              NSString *dylibPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"%DYLIB_PLACEHOLDER%"];
+              dlopen([dylibPath cStringUsingEncoding:NSUTF8StringEncoding], RTLD_NOW);
+              
+              @autoreleasepool {
+                  return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+              }
+          }
+          EOF
             
             # Dinamik olarak dylib ismini kodun içine işleyelim
             sed -i '' "s/%DYLIB_PLACEHOLDER%/$DYLIB_NAME/g" main.m
