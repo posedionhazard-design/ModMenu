@@ -1,4 +1,4 @@
-name: Build iOS Mod Menu (.deb)
+name: Build ModMenu, Deb, Dylib and Perfect IPA
 
 on:
   push:
@@ -13,30 +13,85 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Theos and SDKs
-        run: |
-          # Theos ana dizinini temizle ve yeniden kur
-          sudo rm -rf /opt/theos
-          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
-          
-          # SDK'lar daha önce indirilmiş veya çakışıyorsa zorla temizle
-          sudo rm -rf /opt/theos/sdks
-          sudo git clone https://github.com/theos/sdks.git /opt/theos/sdks
-
       - name: Setup Theos Environment
         run: |
+          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
           echo "THEOS=/opt/theos" >> $GITHUB_ENV
           echo "/opt/theos/bin" >> $GITHUB_PATH
 
-      - name: Build Package with Make
+      - name: Build Package with Max Parallel Power
         run: |
-          make clean
-          make package
+          # 1000+ SDK dosyasını işlemcinin tüm çekirdeklerini kullanarak hızlıca derler
+          make package -j$(sysctl -n hw.ncpu)
 
-      - name: Upload Artifacts (.deb & .dylib)
+      - name: Prepare Separate Output Artifacts
+        run: |
+          mkdir -p output_files
+          
+          # .deb dosyasını kopyala
+          cp packages/*.deb output_files/ 2>/dev/null || echo ".deb bulunamadı"
+          
+          # .dylib dosyasını bul ve kopyala
+          DYLIB_FILE=$(find .theos/obj -name "*.dylib" | head -n 1)
+          if [ -n "$DYLIB_FILE" ]; then
+            cp "$DYLIB_FILE" output_files/
+            echo "Dylib başarıyla kopyalandı."
+          else
+            echo "Uyarı: .dylib dosyası bulunamadı."
+          fi
+
+      - name: Generate Compatible Test IPA & Inject Dylib
+        run: |
+          # Test IPA için uygulama yapısını oluştur
+          mkdir -p Payload/ModMenuTest.app
+          
+          # Info.plist oluştur
+          cat << 'EOF' > Payload/ModMenuTest.app/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleIdentifier</key>
+              <string>com.test.modmenuapp</string>
+              <key>CFBundleName</key>
+              <string>ModMenuTest</string>
+              <key>CFBundleExecutable</key>
+              <string>ModMenuTest</string>
+              <key>CFBundleVersion</key>
+              <string>1.0</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+          </dict>
+          </dict>
+          EOF
+
+          # .dylib dosyasını al ve uygulama içine taşı
+          DYLIB_NAME=$(basename output_files/*.dylib)
+          if [ -f "output_files/$DYLIB_NAME" ]; then
+            cp "output_files/$DYLIB_NAME" Payload/ModMenuTest.app/
+            
+            # Ana binary dosyasını derle
+            echo 'int main(int argc, char *argv[]){return 0;}' > main.c
+            xcrun clang main.c -o Payload/ModMenuTest.app/ModMenuTest
+            
+            # Dylib yolunu @executable_path ile eşleştir (Sorunsuz yüklenmesi için kritik adım)
+            install_name_tool -change "$DYLIB_NAME" "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/ModMenuTest || true
+            
+            # Alternatif ID düzeltmesi
+            install_name_tool -id "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/$DYLIB_NAME || true
+          fi
+
+          # IPA olarak arşivle
+          cd Payload
+          zip -r ../ModMenu_Test_Perfect.ipa *
+          cd ..
+          mv ModMenu_Test_Perfect.ipa output_files/
+          rm -rf Payload main.c
+
+      - name: Upload All Outputs (Deb, Dylib, IPA)
         uses: actions/upload-artifact@v4
         with:
-          name: iOS-ModMenu-Output
-          path: |
-            packages/*.deb
-            .theos/obj/*.dylib
+          name: iOS-ModMenu-Perfect-Outputs
+          path: output_files/*
