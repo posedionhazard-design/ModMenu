@@ -23,25 +23,19 @@ jobs:
           echo "THEOS=/opt/theos" >> $GITHUB_ENV
           echo "/opt/theos/bin" >> $GITHUB_PATH
 
-      - name: Build Package with Max Parallel Power
+      - name: Build Package with Forced Max Parallelism
         run: |
+          # clean komutunu kaldırarak gereksiz yeniden derlemeleri önledik ve -j parametresini zorladık
           make package -j$(sysctl -n hw.ncpu)
 
       - name: Separate and Organize Output Files
         run: |
-          # Ana çıktı klasörünü oluştur
           mkdir -p final_outputs
-          
-          # 1. .deb dosyasını kopyala
           cp packages/*.deb final_outputs/ 2>/dev/null || echo ".deb bulunamadı"
           
-          # 2. .dylib dosyasını bul ve ayrı olarak kopyala
           DYLIB_FILE=$(find .theos/obj -name "*.dylib" | head -n 1)
           if [ -n "$DYLIB_FILE" ]; then
             cp "$DYLIB_FILE" final_outputs/
-            echo ".dylib başarıyla kopyalandı."
-          else
-            echo "Uyarı: .dylib dosyası bulunamadı."
           fi
 
       - name: Generate Compatible Test IPA & Inject Dylib
@@ -71,17 +65,13 @@ jobs:
 
           DYLIB_NAME=$(basename final_outputs/*.dylib)
           if [ -f "final_outputs/$DYLIB_NAME" ]; then
-            # .dylib dosyasını IPA içine de ekle ki uygulama çalıştırabilsin
             cp "final_outputs/$DYLIB_NAME" Payload/ModMenuTest.app/
-            
             echo 'int main(int argc, char *argv[]){return 0;}' > main.c
             xcrun clang main.c -o Payload/ModMenuTest.app/ModMenuTest
-            
             install_name_tool -change "$DYLIB_NAME" "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/ModMenuTest || true
             install_name_tool -id "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/$DYLIB_NAME || true
           fi
 
-          # IPA dosyasını oluştur ve final klasörüne taşı
           cd Payload
           zip -r ../ModMenu_Test.ipa *
           cd ..
@@ -90,7 +80,6 @@ jobs:
 
       - name: Create Final Clean Zip Archive
         run: |
-          # Her şeyi tek bir düzenli zip içinde topluyoruz
           cd final_outputs
           zip -r ../ModMenu_Release_Files.zip *
           cd ..
