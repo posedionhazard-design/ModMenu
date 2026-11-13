@@ -1,0 +1,43 @@
+name: Unzip and Cleanup Repository
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  unzip-and-clean:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract IOS.zip and Cleanup
+        run: |
+          if [ -f "IOS.zip" ]; then
+            echo "IOS.zip bulundu, dosyalar çıkarılıyor..."
+            unzip -q IOS.zip -d .
+            echo "IOS.zip siliniyor..."
+            rm IOS.zip
+            ls -la
+          else
+            echo "IOS.zip bulunamadı!"
+            exit 1
+          fi
+
+      - name: Commit changes to repository
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Çıkan dosyaları ve silinen zip'i git'e ekle
+          git add -A
+          
+          # Değişiklik varsa commit at ve push et
+          if git diff --staged --quiet; then
+            echo "Değişiklik yok."
+          else
+            git commit -m "chore: Unzip IOS.zip and cleanup archive"
+            git push
+          fi
