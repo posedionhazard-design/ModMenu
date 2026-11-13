@@ -13,16 +13,19 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Extract İOS.zip and Cleanup
+      - name: Extract baba.zip and Cleanup
         run: |
-          if [ -f "İOS.zip" ]; then
-            echo "İOS.zip bulundu, dosyalar çıkarılıyor..."
-            unzip -q İOS.zip -d .
-            echo "İOS.zip siliniyor..."
-            rm İOS.zip
+          # baba.zip veya büyük/küçük harf duyarlılığı olmadan herhangi bir zip dosyasını bul
+          ZIP_FILE=$(find . -maxdepth 1 -iname "baba.zip" | head -n 1)
+          
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Bulunan arşiv: $ZIP_FILE, dosyalar çıkarılıyor..."
+            unzip -q "$ZIP_FILE" -d .
+            echo "Arşiv siliniyor..."
+            rm "$ZIP_FILE"
             ls -la
           else
-            echo "İOS.zip bulunamadı!"
+            echo "Hata: Kök dizinde baba.zip dosyası bulunamadı!"
             exit 1
           fi
 
@@ -31,13 +34,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Çıkan dosyaları ve silinen zip'i git'e ekle
           git add -A
           
-          # Değişiklik varsa commit at ve push et
           if git diff --staged --quiet; then
             echo "Değişiklik yok."
           else
-            git commit -m "chore: Unzip İOS.zip and cleanup archive"
+            git commit -m "chore: Unzip baba.zip and cleanup archive"
             git push
           fi
