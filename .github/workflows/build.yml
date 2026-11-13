@@ -15,11 +15,12 @@ jobs:
 
       - name: Install Theos and SDKs
         run: |
-          # Daha önceden kalmış olabilecek eski Theos dosyalarını temizle
+          # Theos ana dizinini temizle ve yeniden kur
           sudo rm -rf /opt/theos
-          
-          # Theos ve SDK'ları sıfırdan klonla
           sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
+          
+          # SDK'lar daha önce indirilmiş veya çakışıyorsa zorla temizle
+          sudo rm -rf /opt/theos/sdks
           sudo git clone https://github.com/theos/sdks.git /opt/theos/sdks
 
       - name: Setup Theos Environment
