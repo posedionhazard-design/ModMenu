@@ -50,11 +50,9 @@ jobs:
 
       - name: Generate Esign Compatible IPA & Inject Dylib
         run: |
-          # Temiz bir Payload klasör yapısı oluştur
           rm -rf Payload
           mkdir -p Payload/ModMenuTest.app
           
-          # Esign uyumlu kusursuz Info.plist
           cat << 'EOF' > Payload/ModMenuTest.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -88,16 +86,13 @@ jobs:
           if [ -f "final_outputs/$DYLIB_NAME" ]; then
             cp "final_outputs/$DYLIB_NAME" Payload/ModMenuTest.app/
             
-            # ARM64 mimarisine uygun test binary dosyası derle
             echo 'int main(int argc, char *argv[]){return 0;}' > main.c
             xcrun clang -arch arm64 main.c -o Payload/ModMenuTest.app/ModMenuTest
             
-            # Dylib ve binary bağlama ayarları
             install_name_tool -change "$DYLIB_NAME" "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/ModMenuTest || true
             install_name_tool -id "@executable_path/$DYLIB_NAME" Payload/ModMenuTest.app/$DYLIB_NAME || true
           fi
 
-          # Doğrudan standart IPA formatında paketle (Esign hatasını önler)
           zip -r ModMenu_Test.ipa Payload
           mv ModMenu_Test.ipa final_outputs/
           rm -rf Payload main.c
@@ -109,7 +104,7 @@ jobs:
           cd ..
 
       - name: Upload Final Archive Artifact
-        uses: upload-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: ModMenu-Release-Bundle
           path: ModMenu_Release_Files.zip
